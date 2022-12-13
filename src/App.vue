@@ -28,12 +28,12 @@
       <button @click="signout" class="logout">logout</button>
       <div class="log_wrapper">
         <dl class="log_loop" v-for="(log,index) in chatlog" :key="log">
-          <dt class="log_blank_box">{{ proflog[index] }}</dt>
-          <div class="log_arrow">▲</div>
-          <dd class="log_box">{{ log }}</dd>
+          <dt class="log_blank_box animate__animated animate__headShake">{{ proflog[index] }}</dt>
+          <div class="log_arrow animate__animated animate__headShake">▲</div>
+          <dd class="log_box animate__animated animate__headShake">{{ log }}</dd>
         </dl>
       </div>
-      <input type="text" id="twt" class="talk_box anim" placeholder="テキストを入力してください">
+      <input type="text" id="twt" class="talk_box anim" placeholder="テキストを入力してください" maxlength="48">
       <button class="anim btn_bottom" @click="writedatabase">write</button>
     </div>
     <div v-show="(view == 4)" class="com_wrapper">
@@ -41,6 +41,7 @@
       <div>(指定した部屋がない場合、新たに作成)</div>
       <input v-model="roominp" type="text" id="roomno" class="input_box">
       <button class="btn anim" @click="roomin(roominp)">roomin</button>
+      <button v-if="(UserData.room != null)" class="btn anim" @click="roomin(UserData.room)">前回入った部屋に入る</button>
     </div>
   </div>
   <div class="main_wrapeer_C">
@@ -56,14 +57,14 @@
 <script>
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
-import { doc,setDoc,getFirestore,query,addDoc,orderBy,onSnapshot,collection,limit,getDoc} from "firebase/firestore";
+import { doc,setDoc,getFirestore,query,orderBy,onSnapshot,collection,limit,getDoc} from "firebase/firestore";
 import {getAuth,signOut,createUserWithEmailAndPassword,signInWithEmailAndPassword,onAuthStateChanged, updateProfile } from "firebase/auth";
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-/////////////////
+
 };
 const app = initializeApp(firebaseConfig);
 const firestore = getFirestore(app);
@@ -84,7 +85,9 @@ export default
       logflag:false,
       chatlog:[],
       proflog:[],
-      roomR:""
+      roomR:"",
+      UserData:{},
+      talkHis:""
     }
   },
   methods:{
@@ -103,13 +106,16 @@ export default
         var t = Y+"/"+M+"/"+D+"  "+h+":"+m+":"+s; 
         var a = document.getElementById("twt").value;
         var n = this.name;
-        addDoc(collection(firestore,this.room), {
+        if(this.talkHis!=a){
+        setDoc(doc(firestore,this.room,String(Date.now())), {
         date: t,
         name: n, 
         talk: a,
         uid: ""+this.uidG,
         jun: Date.now()
         });
+        this.talkHis=a;
+        }
         return;
       },
       signout()
@@ -154,6 +160,17 @@ export default
             this.loginfo="ログインに失敗しました";
           });
       },
+      async GetHistory(){
+        const docRef = doc(firestore, "userdata", this.uidG);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          console.log("Document data:", docSnap.data());
+          this.UserData=docSnap.data();
+        } else {
+          // doc.data() will be undefined in this case
+          console.log("No such document!");
+        }
+      },
       logS()
       {
         const auth = getAuth();
@@ -161,7 +178,7 @@ export default
           if (user) {
             const uid = user.uid;
             this.uidG = user.uid;
-            this.dataR = getDoc(doc(firestore, "userdata",this.uidG));
+            this.GetHistory();
             const mail = ""+user.email;
             this.mailG = mail.slice(0,mail.indexOf('@'));
             this.name=user.displayName;
@@ -176,7 +193,7 @@ export default
       {
         let tk,ta;
         let index=0;
-        const q = query(collection(firestore, this.room), orderBy("jun","asc"),limit(60));
+        const q = query(collection(firestore, this.room), orderBy("jun","asc"),limit(1000));
         const snaps = onSnapshot(q, (snapshot) => {
           snapshot.docChanges().forEach((change) => {
             if (change.type === "added") {
@@ -223,6 +240,14 @@ export default
       }
   },
   created(){
+    document.addEventListener("keydown", event => {
+      if(event.code==='Enter'){
+        if(this.view===3){
+          this.uploaddatabase();
+        }
+      }
+      return;
+    });
       this.logS();     
   }
 }
@@ -277,7 +302,7 @@ p{
   border: solid 1px #121212;
 }
 .log_box{
-  width: 80vw;
+  width: 65vw;
   height: 100px;
   background-color: #2c2c2c;
   color: #ffffff;
@@ -288,13 +313,14 @@ p{
   border-radius: 30px;
   margin-top: 0px;
   margin-bottom: 0px;
-  outline: dashed 2px rgb(113, 113, 113);
+  padding: 20px;
 }
 .log_blank_box{
-  width: 20vw;
-  height: 50px;
-  background-color: #2c2c2c;
-  color: #ffffff;
+  width: 40vw;
+  height: 40px;
+  background-color: #f7f7f7;
+  color: #000000;
+  border: solid 2px black;
   display: flex;
   justify-content: center;
   text-align: center;
