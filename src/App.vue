@@ -27,10 +27,15 @@
       <p>部屋名:{{room}}</p>
       <button @click="signout" class="logout">logout</button>
       <div class="log_wrapper">
-        <dl class="log_loop" v-for="(log,index) in chatlog" :key="log">
-          <dt class="log_blank_box animate__animated animate__headShake">{{ proflog[index] }}</dt>
+        <dl class="log_loop" v-for="log in chatlog" :key="log">
+          <div class="name_iconbox">
+            <div class="icon_cover">
+              <img :src="log.iconurl" alt="icon" class="icon">
+            </div>
+            <dt class="log_blank_box animate__animated animate__headShake">{{ log.name }}</dt>
+          </div>
           <div class="log_arrow animate__animated animate__headShake">▲</div>
-          <dd class="log_box animate__animated animate__headShake">{{ log }}</dd>
+          <dd class="log_box animate__animated animate__headShake">{{ log.talk }}</dd>
         </dl>
       </div>
       <input type="text" id="twt" class="talk_box anim" placeholder="テキストを入力してください" maxlength="48">
@@ -57,8 +62,9 @@
 <script>
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
-import { doc,setDoc,getFirestore,query,orderBy,onSnapshot,collection,limit,getDoc} from "firebase/firestore";
+import { doc,updateDoc,setDoc,getFirestore,query,orderBy,onSnapshot,collection,limit,getDoc} from "firebase/firestore";
 import {getAuth,signOut,createUserWithEmailAndPassword,signInWithEmailAndPassword,onAuthStateChanged, updateProfile } from "firebase/auth";
+
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
 
@@ -68,6 +74,7 @@ const firebaseConfig = {
 };
 const app = initializeApp(firebaseConfig);
 const firestore = getFirestore(app);
+
 
 
 export default 
@@ -84,7 +91,6 @@ export default
       loginfo:"ログインしていません",
       logflag:false,
       chatlog:[],
-      proflog:[],
       roomR:"",
       UserData:{},
       talkHis:""
@@ -107,12 +113,13 @@ export default
         var a = document.getElementById("twt").value;
         var n = this.name;
         if(this.talkHis!=a){
-        setDoc(doc(firestore,this.room,String(Date.now())), {
+        setDoc(doc(firestore,'roomdata/rooms/'+this.room,String(Date.now())), {
         date: t,
         name: n, 
         talk: a,
         uid: ""+this.uidG,
-        jun: Date.now()
+        jun: Date.now(),
+        iconurl:"https://picsum.photos/id/"+this.UserData.icon+"/50/50"
         });
         this.talkHis=a;
         }
@@ -123,6 +130,8 @@ export default
         const auth = getAuth();
         signOut(auth).then(() => {
           this.loginfo="ログインしていません";
+          this.room="";
+          this.UserData=[];
           this.changeview(1);
         }).catch(() => {
           this.loginfo="ログアウトに失敗";
@@ -137,8 +146,14 @@ export default
         createUserWithEmailAndPassword(auth, email, pass)
           .then((userCredential) => {
             const user = userCredential.user;
-            updateProfile(user, { displayName:name, photoURL: "" });
+            updateProfile(user, { displayName:name,photoURL:"" });
             this.name=name;
+            setDoc(doc(firestore, "userdata",user.uid), {
+            uid: ""+user.uid,
+            user:name,
+            jun: Date.now(),
+            icon:Math.floor(Math.random()*999)
+            });
             console.log(user);
           })
           .catch(() => {
@@ -191,18 +206,11 @@ export default
       },
       async snap()
       {
-        let tk,ta;
-        let index=0;
-        const q = query(collection(firestore, this.room), orderBy("jun","asc"),limit(1000));
+        const q = query(collection(firestore,'roomdata/rooms/'+this.room), orderBy("jun","asc"),limit(1000));
         const snaps = onSnapshot(q, (snapshot) => {
           snapshot.docChanges().forEach((change) => {
             if (change.type === "added") {
-                //tk = change.doc.get("date")+"\n"+change.doc.get("uid");
-                tk = change.doc.get("name");
-                ta = change.doc.get("talk");
-                this.proflog.unshift(tk);
-                this.chatlog.unshift(ta);
-                console.log(this.chatlog+"_"+index);
+                  this.chatlog.unshift(change.doc.data());
             }
             if (change.type === "modified") {
                 // tk = document.getElementById( "talkR" ).value;
@@ -214,7 +222,6 @@ export default
                 // ta = change.doc.get("name")+"の発言が削除された。"+"\n\n";
                 // document.getElementById( "talkR" ).value=ta+tk;
             }
-            index++;
           });
         });
         console.log(snaps);
@@ -226,13 +233,13 @@ export default
         this.uploaddatabase();
       },
       roomin(roomno){
+        console.log(this.room);
         this.room=roomno;
         if(roomno==""){
           this.room = String(Math.floor(Math.random()*9999999));
         }
-        setDoc(doc(firestore, "userdata",this.uidG), {
+        updateDoc(doc(firestore, "userdata",this.uidG),{
         room: String(this.room),
-        uid: ""+this.uidG,
         jun: Date.now()
         });
         this.changeview(3);
@@ -282,6 +289,24 @@ textarea{
 p{
   margin-top: 40px;
 }
+.name_iconbox{
+  display: flex;
+  margin-top: 20px;
+  margin-bottom: 10px;
+  flex-direction: column;
+  align-items: center;
+}
+.icon{
+  width: 50px;
+  height: 50px;
+}
+.icon_cover{
+  width: 50px;
+  height: 50px;
+  border-radius: 100%;
+  overflow: hidden;
+  margin-bottom: 2px;
+}
 .talk_box{
   position: fixed;
   left: 0;
@@ -293,6 +318,12 @@ p{
   border: solid 3px #141414;
   background-color: #ffffff;
   z-index: 56;
+}
+.name{
+  display: flex;
+  justify-content: flex-start;
+  text-align: end;
+  align-items: flex-end;
 }
 .input_box{
   padding: 20px;
@@ -316,17 +347,17 @@ p{
   padding: 20px;
 }
 .log_blank_box{
-  width: 40vw;
-  height: 40px;
+  width: 20vw;
+  height: 20px;
   background-color: #f7f7f7;
-  color: #000000;
-  border: solid 2px black;
+  color: #363636;
+  border: solid 2px rgb(95, 95, 95);
   display: flex;
   justify-content: center;
   text-align: center;
+  font-size: 12px;
   align-items: center;
   border-radius: 30px;
-  margin-top: 40px;
   max-width: 200px;
   overflow: hidden;
 }
@@ -343,16 +374,17 @@ p{
   overflow: hidden;
 }
 .log_arrow{
+  height: 15px;
   font-size:30px;
   color: #2c2c2c;
   display: flex;
-  justify-content: start;
+  justify-content: center;
   text-align: center;
   align-items: center;
   position: relative;
-  bottom: -15px;
-  left: 30px;
-  
+  left: -30px;
+  bottom: -3px;
+  transform: skew(-30deg, 20deg)scale(1, 1.2);
 }
 .log_wrapper{
   margin-bottom: 100px;
