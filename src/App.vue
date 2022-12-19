@@ -29,7 +29,7 @@
       <div class="log_wrapper">
         <dl class="log_loop" v-for="log in chatlog" :key="log">
           <div class="name_iconbox">
-            <div class="icon_cover">
+            <div class="icon_cover animate__animated animate__headShake">
               <img :src="log.iconurl" alt="icon" class="icon">
             </div>
             <dt class="log_blank_box animate__animated animate__headShake">{{ log.name }}</dt>
@@ -38,7 +38,7 @@
           <dd class="log_box animate__animated animate__headShake">{{ log.talk }}</dd>
         </dl>
       </div>
-      <input type="text" id="twt" class="talk_box anim" placeholder="テキストを入力してください" maxlength="48">
+      <input type="text" id="twt" class="talk_box anim" placeholder="テキストを入力してください" maxlength="240">
       <button class="anim btn_bottom" @click="writedatabase">write</button>
     </div>
     <div v-show="(view == 4)" class="com_wrapper">
@@ -81,6 +81,7 @@ export default
 {
   data(){
     return{
+      keytime:0,
       no:0,
       roominp:"",
       room:"",
@@ -247,11 +248,20 @@ export default
       }
   },
   created(){
-    document.addEventListener("keydown", event => {
+    document.addEventListener("keypress", event => {
       if(event.code==='Enter'){
-        if(this.view===3){
+        console.log("Enter"+this.keytime);
+        this.keytime++;
+        if(this.view===3&&this.keytime>5){
           this.uploaddatabase();
+          this.keytime=0;
         }
+      }
+      return;
+    });
+    document.addEventListener("keyup", event => {
+      if(event.code==='Enter'){
+        this.keytime=0;
       }
       return;
     });
@@ -270,7 +280,7 @@ body{
 .logout{
   width: 100px;
   height: 30px;
-  background-color: #121212;
+  background-color: #2c2c2c;
   color: #ffffff;
   margin-top:5px;
 }
@@ -315,7 +325,8 @@ p{
   width: 80vw;
   height: 60px;
   font-size: 1rem;
-  border: solid 3px #141414;
+  border-top: solid 3px #2c2c2c;
+  border-right: solid 1.5px #2c2c2c;
   background-color: #ffffff;
   z-index: 56;
 }
@@ -334,7 +345,7 @@ p{
 }
 .log_box{
   width: 65vw;
-  height: 100px;
+  height: auto;
   background-color: #2c2c2c;
   color: #ffffff;
   display: flex;
@@ -350,8 +361,8 @@ p{
   width: 20vw;
   height: 20px;
   background-color: #f7f7f7;
-  color: #363636;
-  border: solid 2px rgb(95, 95, 95);
+  color: #2c2c2c;
+  border: solid 2px #2c2c2c;
   display: flex;
   justify-content: center;
   text-align: center;
@@ -454,7 +465,8 @@ p{
   right: 0;
   bottom: 0;
   z-index: 56;
-  border:solid 2px black;
+  border-top: solid 3px #2c2c2c;
+  border-left: solid 1.5px #2c2c2c;
   background-color: rgb(117, 27, 27);
   color: aliceblue;
 }
@@ -481,7 +493,7 @@ p{
   bottom: 0;
   left: 0;
   margin: auto;
-  border: double 20px rgb(13, 13, 14);
+  border: double 20px #151515;
   outline: solid 10px rgb(255, 255, 255);
   display: flex;
   flex-direction: column;
